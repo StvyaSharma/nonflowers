@@ -1,6 +1,6 @@
 # Nonflowers
 
-Procedurally generated paintings of nonexistent flowers in Gongbi style, originally created by [Lingdong Huang](https://github.com/LingDong-/nonflowers). This fork uses **TypeScript, p5.js, and Vite**.
+Procedurally generated paintings of nonexistent flowers in Gongbi style, originally created by [Lingdong Huang](https://github.com/LingDong-/nonflowers). This fork uses **TypeScript, p5.js, and Vite**, with an optional layered fish generator using **p5.brush**.
 
 ![Sample output from the original project](/screenshots/screen01.jpg)
 
@@ -25,6 +25,14 @@ Use the **Nonflowers** DialKit panel and choose **Seed** or **Manual** under **G
 Manual settings control the plant parameters, while the seed still determines the placement, small variations, and procedural detail. Changing a metric does not change the seed. The manual settings are included in the URL, so reloading or sharing the URL restores the same configuration. **New painting** returns to a new seed-generated painting. **Download PNG** exports the image and **Copy share link** copies a URL that restores it.
 
 DialKit's framework-free controller and built-in floating panel own all controls and actions. Its official vanilla stylesheet is loaded without custom themes, overrides, or replacement controls. Editing a plant metric automatically switches to Manual mode. Manual mode also makes previously unused center width/shape parameters effective, applies branch colors to child branches, and uses exact shoot counts. Seed mode preserves the earlier paintings.
+
+## Layered fish paintings
+
+Choose **Subject → Fish**, or open `?subject=fish&seed=river`. Use **Fish recipes** for silver stripes, reef bars, koi patches, spotted river fish, ringed fins and reaction–diffusion starting points. Seed and Manual modes, share URLs and PNG downloads work for both subjects.
+
+Fish have nine individually controlled regions and interacting pigment, dark marking, pale marking, reflection, scale, fin and watercolor layers. Analytical motifs can combine with an actual worker-based Gray–Scott simulation on the fish silhouette. The stock DialKit panel also exposes diagnostic layer views. Page and DialKit styling are unchanged.
+
+See the [control and implementation guide](docs/fish-generator.md) and the [primary-source research on fish coloration and pattern formation](docs/fish-coloration-research.md). The renderer is an artistic model informed by that research, not a validated biological simulation. Final fish brushwork requires WebGL2; exact GPU texture pixels may differ across devices.
 
 ## Build and verify
 

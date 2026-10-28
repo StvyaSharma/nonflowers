@@ -25,7 +25,8 @@
   "homepage": "https://github.com/StvyaSharma/nonflowers#readme",
   "dependencies": {
     "dialkit": "^2.1.0",
-    "p5": "^2.3.4"
+    "p5": "^2.3.4",
+    "p5.brush": "^3.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

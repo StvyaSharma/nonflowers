@@ -10,6 +10,14 @@ import {
   readSettings,
   type ManualSettings,
 } from "../rendering/settings";
+import {
+  fishChoices,
+  fishMetrics,
+  defaultFishSettings,
+  readFishSettings,
+  type FishSettings,
+} from "../fish/settings";
+import { fishRecipes, fishRecipe, type RecipeName } from "../fish/recipes";
 import type { GenerationRequest } from "./location";
 
 /** Use DialKit's own renderer and stylesheet for every control and action. */
@@ -19,6 +27,14 @@ export function setupControls(
   actions: { download(): void; share(): void },
 ) {
   const config: DialConfig = {
+    Subject: {
+      type: "select",
+      default: initial.subject ?? "plant",
+      options: [
+        { value: "plant", label: "Plants" },
+        { value: "fish", label: "Fish" },
+      ],
+    },
     "Generation mode": {
       type: "select",
       default: initial.mode,
@@ -33,7 +49,17 @@ export function setupControls(
     "Download PNG": { type: "action", label: "Download PNG" },
     "Copy share link": { type: "action", label: "Copy share link" },
   };
+  config["Fish recipes"] = {
+    _collapsed: true,
+    ...Object.fromEntries(
+      Object.keys(fishRecipes).map((name) => [
+        name,
+        { type: "action", label: name },
+      ]),
+    ),
+  };
   const paths = new Map<string, string>();
+  const fishPaths = new Map<string, string>();
   function group(name: string): DialConfig {
     if (!config[name]) config[name] = { _collapsed: true };
     return config[name] as DialConfig;
@@ -55,10 +81,41 @@ export function setupControls(
     ];
     paths.set(key, `${definition.group}.${definition.label}`);
   }
+  for (const [key, definition] of Object.entries(fishChoices)) {
+    group(definition.group)[definition.label] = {
+      type: "select",
+      default: definition.initial,
+      options: [...definition.options],
+    };
+    fishPaths.set(key, `${definition.group}.${definition.label}`);
+  }
+  for (const [key, definition] of Object.entries(fishMetrics)) {
+    group(definition.group)[definition.label] = [
+      definition.initial,
+      definition.min,
+      definition.max,
+      definition.step,
+    ];
+    fishPaths.set(key, `${definition.group}.${definition.label}`);
+  }
   let synchronizing = false;
   const controller = createDialKit("Nonflowers", config, {
     onAction(action) {
-      if (action === "Download PNG") actions.download();
+      if (action.startsWith("Fish recipes.")) {
+        const name = action.slice("Fish recipes.".length) as RecipeName;
+        if (!Object.hasOwn(fishRecipes, name)) return;
+        setFishSettings(fishRecipe(name));
+        synchronizing = true;
+        try {
+          controller.setValues({
+            Subject: "fish",
+            "Generation mode": "manual",
+          });
+        } finally {
+          synchronizing = false;
+        }
+        onChange(getRequest());
+      } else if (action === "Download PNG") actions.download();
       else if (action === "Copy share link") actions.share();
       else if (action === "New painting") {
         synchronizing = true;
@@ -84,6 +141,15 @@ export function setupControls(
     }
     return readSettings(settings);
   }
+  function getFishSettings(): FishSettings {
+    const values = controller.getValues(),
+      settings: Record<string, unknown> = {};
+    for (const [key, path] of fishPaths) {
+      const [folder, label] = path.split(".");
+      settings[key] = (values[folder] as Record<string, unknown>)[label];
+    }
+    return readFishSettings(settings);
+  }
   function getRequest(): GenerationRequest {
     const values = controller.getValues();
     const mode = values["Generation mode"] === "manual" ? "manual" : "seed";
@@ -93,9 +159,19 @@ export function setupControls(
           ? values.Seed
           : initial.seed,
       mode,
-      settings: mode === "manual" ? getSettings() : undefined,
+      subject: values.Subject === "fish" ? "fish" : "plant",
+      settings:
+        mode === "manual" && values.Subject !== "fish"
+          ? getSettings()
+          : undefined,
+      fishSettings:
+        mode === "manual" && values.Subject === "fish"
+          ? getFishSettings()
+          : undefined,
     };
   }
+  const serializedSettings = () =>
+    JSON.stringify([getSettings(), getFishSettings()]);
   let lastSettings = "";
   let lastRequest = "";
   function setSettings(settings: ManualSettings): void {
@@ -108,16 +184,33 @@ export function setupControls(
         (updates[folder] ??= {})[label] = values[key as keyof ManualSettings];
       }
       controller.setValues(updates);
-      lastSettings = JSON.stringify(getSettings());
+      lastSettings = serializedSettings();
+      lastRequest = JSON.stringify(getRequest());
+    } finally {
+      synchronizing = false;
+    }
+  }
+  function setFishSettings(settings: FishSettings): void {
+    synchronizing = true;
+    try {
+      const values = readFishSettings(settings),
+        updates: Record<string, DialConfig> = {};
+      for (const [key, path] of fishPaths) {
+        const [folder, label] = path.split(".");
+        (updates[folder] ??= {})[label] = values[key as keyof FishSettings];
+      }
+      controller.setValues(updates);
+      lastSettings = serializedSettings();
       lastRequest = JSON.stringify(getRequest());
     } finally {
       synchronizing = false;
     }
   }
   setSettings(initial.settings ?? defaultSettings());
+  setFishSettings(initial.fishSettings ?? defaultFishSettings());
   const unsubscribe = controller.subscribe(() => {
     if (synchronizing) return;
-    const settings = JSON.stringify(getSettings());
+    const settings = serializedSettings();
     if (
       settings !== lastSettings &&
       controller.getValues()["Generation mode"] === "seed"
@@ -135,6 +228,7 @@ export function setupControls(
   }, false);
   return {
     setSettings,
+    setFishSettings,
     destroy(): void {
       unsubscribe();
       root.destroy();
