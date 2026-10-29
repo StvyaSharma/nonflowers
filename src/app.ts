@@ -8,6 +8,7 @@ import { setupControls } from "./ui/controls";
 import { element } from "./ui/dom";
 import { downloadPainting } from "./ui/download";
 import { readRequest, requestURL, type GenerationRequest } from "./ui/location";
+import { mountBlocks } from "./ui/spinner/blocks";
 
 /** Mount a sketch and its controls. Returns cleanup for development hot reload. */
 export function mountApp(): () => void {
@@ -15,6 +16,7 @@ export function mountApp(): () => void {
   const container = element("canvas-container");
   const loader = element("loader");
   const content = element("content");
+  mountBlocks(element("spinner"));
   loader.hidden = false;
   content.hidden = true;
   delete container.dataset.ready;
